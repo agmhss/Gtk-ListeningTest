@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>GTK Listen & Answer</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#f0f8ff; --text:#222; --card:#fff;
+    --primary1:#0078d7; --primary2:#00b4d8;
+    --good:#16a34a; --warn:#b91c1c; --muted:#64748b;
+    --chip:#eef7ff; --chip-border:#dbeafe;
+  }
+  *{box-sizing:border-box}
+  body{font-family:'Poppins',sans-serif;margin:0;background:var(--bg);color:var(--text)}
+  header{background:linear-gradient(to right,var(--primary1),var(--primary2));color:#fff;text-align:center;padding:18px 10px;font-size:1.6rem;font-weight:600}
+  main{padding:18px;max-width:960px;margin:auto}
+  .card{background:var(--card);border-radius:14px;padding:18px;margin-bottom:20px;box-shadow:0 4px 12px rgba(0,0,0,.08)}
+  h2{margin:.2em 0 .6em}
+  h3{margin:1em 0 .6em}
+  p{line-height:1.6}
+  .row{display:flex;flex-wrap:wrap;gap:12px}
+  .row > *{flex:1 1 220px}
+  .stack{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  input[type="text"], select{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:10px;font-family:inherit}
+  .btn{background:var(--primary1);color:#fff;border:none;border-radius:10px;padding:10px 16px;cursor:pointer;font-size:1rem;transition:transform .04s ease, opacity .2s}
+  .btn:hover{opacity:.95}
+  .btn:active{transform:scale(.98)}
+  .btn-ghost{background:#fff;color:var(--primary1);border:1px solid var(--chip-border)}
+  .kpi{display:flex;gap:10px;flex-wrap:wrap}
+  .chip{background:var(--chip);border:1px solid var(--chip-border);padding:8px 12px;border-radius:999px;font-weight:600}
+  .score{color:var(--good)}
+  .qprog{color:#0f172a}
+  .msg{min-height:22px;font-weight:600}
+  .msg.ok{color:var(--good)}
+  .msg.no{color:var(--warn)}
+  .muted{color:var(--muted)}
+  .hof-item{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed #e2e8f0}
+  .options{display:grid;gap:10px;margin-top:10px}
+  .opt{display:flex;gap:10px;align-items:center;border:1px solid #e2e8f0;border-radius:10px;padding:10px;cursor:pointer}
+  .qbox{border:1px dashed #e2e8f0;border-radius:10px;padding:12px;background:#fafcff}
+  .cert-preview{border:1px dashed #e2e8f0;border-radius:10px;padding:10px;background:#fafcff;margin-top:8px}
+  @media (max-width:640px){ header{font-size:1.25rem} }
+</style>
+</head>
+<body>
+<header>🎧 GTK Listen & Answer</header>
+<main>
+
+  <!-- Welcome -->
+  <section class="card">
+    <h2>1) Welcome</h2>
+    <p class="muted">This listening comprehension game uses real-life style audio. Fill these details once; they’ll be used for your certificate and Hall of Fame.</p>
+
+    <div class="row" style="margin-top:10px">
+      <div><label><strong>Name</strong></label><input id="studentName" type="text" placeholder="Your name" autocomplete="name"></div>
+      <div><label><strong>Class</strong></label><input id="studentClass" type="text" placeholder="e.g., 6 / 7A"></div>
+      <div><label><strong>Section</strong></label><input id="studentSection" type="text" placeholder="A / B / C"></div>
+      <div><label><strong>School</strong></label><input id="studentSchool" type="text" placeholder="Your school"></div>
+    </div>
+
+    <div class="kpi" aria-live="polite" style="margin-top:12px">
+      <span class="chip qprog">Question: <strong id="qProg">0/5</strong></span>
+      <span class="chip score">Score: <strong id="score">0</strong></span>
+      <span class="chip">Skips left: <strong id="skipsLeft">1</strong></span>
+      <span class="chip">Category: <strong id="activeCat">—</strong></span>
+      <span class="chip" id="timerChip" title="Time left">⏱ <strong id="timerVal">—</strong></span>
+    </div>
+
+    <div class="row" style="margin-top:10px">
+      <div>
+        <label><strong>Category</strong></label>
+        <select id="category">
+          <option value="announcements">Announcements (~30s)</option>
+          <option value="instructions">Instructions (~1 min)</option>
+          <option value="stories">Stories (~1 min)</option>
+          <option value="poems">Poems (~1 min)</option>
+          <option value="paragraphs">Paragraph (~1 min)</option>
+        </select>
+      </div>
+      <div>
+        <label><strong>Voice</strong> <span class="muted">(optional)</span></label>
+        <select id="voiceSelect"></select>
+      </div>
+      <div>
+        <label><strong>Speech Rate</strong></label>
+        <select id="rate">
+          <option value="0.9">Slow</option>
+          <option value="1" selected>Normal</option>
+          <option value="1.1">Fast</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="stack" style="margin-top:8px">
+      <button class="btn" id="startBtn">Start ▶</button>
+      <button class="btn-ghost" id="repeatBtn" disabled>Repeat ⟳</button>
+      <button class="btn-ghost" id="skipBtn" disabled>Skip (1 max)</button>
+    </div>
+    <p class="muted" id="hint">Choose a category and press Start to hear Q1/5.</p>
+  </section>
+
+  <!-- Question -->
+  <section class="card">
+    <h2>2) Question</h2>
+    <div class="qbox" aria-live="polite">
+      <p id="qText" class="muted">Audio-based question will appear here after playback starts.</p>
+    </div>
+    <div class="options" id="options" role="radiogroup" aria-label="Answer choices"></div>
+    <div class="stack" style="margin-top:8px">
+      <button class="btn" id="submitBtn" disabled>Submit</button>
+      <span class="msg" id="feedback" aria-live="polite"></span>
+    </div>
+  </section>
+
+  <!-- Certificate -->
+  <section class="card">
+    <h2>3) Certificate</h2>
+    <div class="cert-preview" id="certPreview">
+      <p id="certLine">This is to certify that <strong>—</strong> of Class <strong>—</strong>, Section <strong>—</strong>, School <strong>—</strong>, has successfully completed the Listening Comprehension with a score of <strong>0%</strong>.</p>
+      <p class="muted" id="certDate">Date: —/—/—</p>
+    </div>
+    <div class="stack" style="margin-top:8px">
+      <button class="btn" id="downloadCert" disabled>🎓 Download Certificate (PDF)</button>
+    </div>
+  </section>
+
+  <!-- Hall of Fame -->
+  <section class="card">
+    <h2>4) Hall of Fame (Top 10)</h2>
+    <p class="muted">Auto-saves locally after you finish a round.</p>
+    <div id="hofList"></div>
+  </section>
+
+</main>
+
+<script>
+/* =========================
+   Expanded Question bank (more items for variety)
+   ========================= */
+const BANK = {
+  announcements: [
+    { audio:"Attention please. The Chennai Express will arrive on Platform Number Three at ten twenty. Passengers for Trichy and Thanjavur, please proceed to Platform Three. Kindly stand behind the yellow line until the train comes to a complete stop.",
+      question:"Which platform should passengers for Trichy go to?", choices:["Platform 1","Platform 2","Platform 3","Platform 4"], answer:2 },
+    { audio:"Dear customers, our store will close in fifteen minutes. Please bring your items to the billing counter. Today's offer on notebooks ends at closing time.",
+      question:"How long until the store closes?", choices:["5 minutes","10 minutes","15 minutes","30 minutes"], answer:2 },
+    { audio:"This is a boarding announcement for Flight AI 620 to Mumbai. Passengers in rows twenty to thirty five may now board through Gate Six. Please have your boarding pass ready.",
+      question:"Which gate is used for boarding?", choices:["Gate 3","Gate 6","Gate 9","Gate 2"], answer:1 },
+    { audio:"Attention all passengers. The 8:30 bus to Madurai is delayed due to traffic and will depart at 8:50. We regret the inconvenience.",
+      question:"What time will the bus now depart?", choices:["8:30","8:40","8:50","9:00"], answer:2 },
+    { audio:"Announcement: The science fair registration closes today at 4 PM. Please submit your entries at the library help desk before the deadline.",
+      question:"Where should entries be submitted?", choices:["Office","Auditorium","Library help desk","Lab 2"], answer:2 },
+    /* extra variety */
+    { audio:"Your attention please. Platform change for the Intercity Express to Coimbatore: the train will now depart from Platform Five. Kindly make your way to Platform Five.",
+      question:"What changed for the Coimbatore Intercity?", choices:["Departure time","Coach order","Platform","Route"], answer:2 },
+    { audio:"Final call for passengers on Train 121 bound for Bengaluru. Doors will close in two minutes. Please board immediately through Coach B.",
+      question:"How much time is left before doors close?", choices:["Five minutes","Two minutes","One minute","Ten minutes"], answer:1 },
+    { audio:"Customers are informed that the electronics counter has moved to the first floor near the escalator. Festive discounts continue until Sunday.",
+      question:"Where is the electronics counter now located?", choices:["Ground floor","Basement","First floor near escalator","Second floor"], answer:2 },
+    { audio:"Flight update: Weather in Delhi is clear. Boarding for Flight 7E 402 will begin at Gate 12 in ten minutes. Please remain near the gate.",
+      question:"When will boarding begin?", choices:["Now","In five minutes","In ten minutes","After an hour"], answer:2 },
+    { audio:"Reminder: Please do not leave your luggage unattended. Report any suspicious items to the help desk immediately.",
+      question:"What should you do if you see suspicious items?", choices:["Ignore them","Open them","Report to help desk","Take them home"], answer:2 }
+  ],
+  instructions: [
+    { audio:"Please read the questions carefully before answering. Use a blue or black pen only. Do not write in the margins. When you finish, tie your pages together and submit them to the invigilator at the front desk.",
+      question:"Which colors are allowed for writing?", choices:["Blue or black","Blue only","Black only","Any color"], answer:0 },
+    { audio:"To set up the projector, first connect the HDMI cable to your laptop. Then press the Source button on the remote and choose HDMI 1. If the screen is blank, restart your laptop and try again.",
+      question:"Which source should be selected on the projector?", choices:["AV","HDMI 1","HDMI 2","USB"], answer:1 },
+    { audio:"Before starting the experiment, wear gloves and safety glasses. Measure fifty milliliters of solution A, then slowly mix it with solution B while stirring. Do not inhale the fumes.",
+      question:"What safety items must be worn?", choices:["Gloves only","Glasses only","Gloves and safety glasses","No safety needed"], answer:2 },
+    { audio:"To register for the event, open the school portal, click Events, select the workshop, and press Register. You will receive a confirmation email within an hour.",
+      question:"Where should students click on the portal?", choices:["Home","Events","Profile","Messages"], answer:1 },
+    { audio:"When watering plants, check the soil first. If it feels dry, water gently until it begins to drain from the bottom. Avoid overwatering.",
+      question:"When should you water the plant?", choices:["Only at night","When soil feels dry","Every hour","Every day at noon"], answer:1 },
+    /* extra variety */
+    { audio:"To back up your notes, open the cloud app, select the notebook, and tap 'Sync Now'. Ensure you are connected to Wi-Fi before syncing.",
+      question:"What must be ensured before syncing?", choices:["Mobile data is off","Wi-Fi is connected","Bluetooth is on","Airplane mode is on"], answer:1 },
+    { audio:"While cooking pasta, boil water with a pinch of salt, add pasta, and stir occasionally. Drain when it is soft but slightly firm.",
+      question:"When should you drain the pasta?", choices:["When fully mushy","When slightly firm","Before boiling","After adding salt"], answer:1 },
+    { audio:"To start the online quiz, log in, click 'My Courses', choose English, and press 'Start'. You have twenty minutes to finish.",
+      question:"Where should you click after logging in?", choices:["Dashboard","My Courses","Messages","Grades"], answer:1 },
+    { audio:"To clean the classroom board, spray a small amount of cleaner on the cloth, not on the board, and wipe from top to bottom.",
+      question:"Where should cleaner be sprayed?", choices:["Directly on board","On the cloth","On the floor","In the air"], answer:1 },
+    { audio:"When submitting an assignment, rename the file as 'Name_Class' and upload it as a PDF. Check the 'Submitted' status afterward.",
+      question:"In what format should the file be uploaded?", choices:["DOC","JPG","PDF","TXT"], answer:2 }
+  ],
+  stories: [
+    { audio:"Ravi loved puzzles. One day he found a box with a small key hole. After searching the room, he noticed a key hidden under a book. The key fit, and inside he discovered a note that said, 'Well done, you found the first clue!'",
+      question:"What did Ravi find inside the box?", choices:["A map","A coin","A note","A gift"], answer:2 },
+    { audio:"Meera trained for weeks to run the school race. On the day, rain made the track slippery, but she paced herself and finished strong, winning second place with a big smile.",
+      question:"What position did Meera achieve?", choices:["First","Second","Third","She did not finish"], answer:1 },
+    { audio:"A stray puppy followed Arjun home. He posted a message to find the owner and took care of the puppy meanwhile. Two days later, a grateful family came to take it back.",
+      question:"How long did it take to find the owner?", choices:["Same day","One day","Two days","A week"], answer:2 },
+    { audio:"During the picnic, the class lost their way in the garden maze. They looked for the tallest tree and used it as a guide to reach the exit safely.",
+      question:"What helped the class find the exit?", choices:["A map","The tallest tree","A compass","A whistle"], answer:1 },
+    { audio:"Anu wanted to surprise her brother with a handmade card. She collected leaves of different shapes, pressed them, and created a beautiful collage.",
+      question:"What did Anu make?", choices:["A painting","A collage card","A bookmark","A poster"], answer:1 },
+    /* extra variety */
+    { audio:"Karan forgot his lunchbox but his friend shared sandwiches. In return, Karan helped with homework later, and both were happy.",
+      question:"How did Karan thank his friend?", choices:["Bought lunch","Shared a toy","Helped with homework","Wrote a note"], answer:2 },
+    { audio:"Priya planted a tiny seed in a pot. She watered it daily and kept it in sunlight. A week later, a small sprout appeared.",
+      question:"What happened after a week?", choices:["Plant dried","No change","Sprout appeared","Pot broke"], answer:2 },
+    { audio:"At the beach, Asha built a tall sandcastle. When a wave knocked it down, she laughed and built a new one farther from the water.",
+      question:"What did Asha do after the wave?", choices:["Cried","Left the beach","Built a new one","Called a friend"], answer:2 },
+    { audio:"During group study, Vivek organized the notes, Riya solved sums, and Sam read aloud. Together they finished the chapter.",
+      question:"How did they complete the chapter?", choices:["Studied alone","Worked together","Copied answers","Skipped tasks"], answer:1 },
+    { audio:"Grandpa told Leela how he learned cycling on a rough road. Leela felt inspired and practiced until she could ride confidently.",
+      question:"What did Leela do after hearing Grandpa?", choices:["Gave up","Cried","Practiced cycling","Sold the cycle"], answer:2 }
+  ],
+  poems: [
+    { audio:"The sun peeks out after the rain, painting colors across the sky. Children laugh and point to the arc, bright and bending high.",
+      question:"What appears after the rain?", choices:["Clouds","Rainbow","Moon","Storm"], answer:1 },
+    { audio:"In the quiet of the library, stories whisper from the shelves. Open a page and sail away, where imagination dwells.",
+      question:"Where do stories 'whisper' from?", choices:["Window","Shelves","Stage","Garden"], answer:1 },
+    { audio:"Morning birds sing gently, weaving music through the air. The day begins with melodies, light and sweet and fair.",
+      question:"Who sings in the morning?", choices:["Birds","Children","Cats","Wind"], answer:0 },
+    { audio:"A pencil starts a journey with a line across the page. Soon a world is drawn with care, from a tiny stage.",
+      question:"What begins the pencil's journey?", choices:["A circle","A line","A dot","A curve"], answer:1 },
+    { audio:"Stars sprinkle silver dust across the velvet night. Dreams tiptoe softly until the dawn's soft light.",
+      question:"What do stars sprinkle?", choices:["Golden rain","Silver dust","Snow","Clouds"], answer:1 },
+    /* extra variety */
+    { audio:"Leaves dance in a secret breeze, whispering tales to the trees. Shadows stretch and then they fold, as dusk paints edges gold.",
+      question:"What dances in the breeze?", choices:["Raindrops","Leaves","Birds","Clouds"], answer:1 },
+    { audio:"Crickets stitch the night with sound, tiny choirs all around. Moonlight draws a silver seam, mending edges of a dream.",
+      question:"Who stitches the night with sound?", choices:["Owls","Crickets","Wind","Cats"], answer:1 },
+    { audio:"A river hums a patient tune, polishing stones all afternoon. Pebbles learn to shine at last, for time and water never rush past.",
+      question:"What helps pebbles shine?", choices:["Rain only","Sun only","Time and water","Wind"], answer:2 },
+    { audio:"Across the roofs the swallows glide, threading sky from side to side. Feathers etch a fleeting line, vanishing like a sign.",
+      question:"Who glides across the roofs?", choices:["Swallows","Eagles","Bats","Kites"], answer:0 },
+    { audio:"A lantern warms the window glass, guiding wanderers who pass. In its halo, snowflakes gleam, floating softly in a dream.",
+      question:"What warms the window glass?", choices:["Sun","Lantern","Fireplace","Candle"], answer:1 }
+  ],
+  paragraphs: [
+    { audio:"Handwashing is one of the simplest ways to stay healthy. Use soap and scrub your hands for at least twenty seconds, especially before eating and after playing outside. Rinse well and dry with a clean towel.",
+      question:"How long should you scrub your hands?", choices:["10 seconds","20 seconds","30 seconds","1 minute"], answer:1 },
+    { audio:"Recycling helps reduce waste. Separate paper, plastic, and metal into different bins. Reusing items like jars and bags also saves resources.",
+      question:"What should be separated into different bins?", choices:["Food and water","Paper, plastic, metal","Glass only","Batteries only"], answer:1 },
+    { audio:"Reading for just fifteen minutes a day can improve focus and language skills. Choose topics you enjoy so that reading becomes a habit.",
+      question:"How long should you read daily to improve skills?", choices:["5 minutes","10 minutes","15 minutes","1 hour"], answer:2 },
+    { audio:"Cycling is good exercise and friendly to the environment. Always wear a helmet and follow traffic rules to stay safe.",
+      question:"What safety gear is recommended?", choices:["Gloves","Helmet","Knee pads","Boots"], answer:1 },
+    { audio:"Keeping a tidy desk makes it easier to find things. Put books back after use and throw away scrap papers. Spend a few minutes each day to organize.",
+      question:"Why keep a tidy desk?", choices:["To decorate it","To find things easily","To impress friends","To avoid homework"], answer:1 },
+    /* extra variety */
+    { audio:"Healthy sleep supports memory and growth. Go to bed at the same time each night and avoid screens an hour before sleeping.",
+      question:"What should be avoided before sleeping?", choices:["Books","Screens","Water","Homework"], answer:1 },
+    { audio:"Planting native trees helps local birds and insects. Water new saplings regularly and protect them with small fences.",
+      question:"What do native trees help?", choices:["Local birds and insects","Only flowers","Only soil","Only humans"], answer:0 },
+    { audio:"During group projects, share tasks fairly and set a small deadline for each part. Meet to review progress every few days.",
+      question:"What should teams set for each part?", choices:["A party","A deadline","A poster","A quiz"], answer:1 },
+    { audio:"Public speaking improves with practice. Start with short talks, make eye contact, and take a breath before each sentence.",
+      question:"What should you do before each sentence?", choices:["Shout","Clap","Take a breath","Look away"], answer:2 },
+    { audio:"Simple stretches reduce stiffness after long study sessions. Roll your shoulders, look left and right slowly, and stand up to move.",
+      question:"What reduces stiffness after studying?", choices:["More coffee","Simple stretches","Loud music","Extra homework"], answer:1 }
+  ]
+};
+
+/* =========================
+   Settings
+   ========================= */
+const DUR = { announcements:30, instructions:60, stories:60, poems:60, paragraphs:60 };
+
+/* =========================
+   State
+   ========================= */
+let selectedCat='announcements', items=[], idx=0, score=0, skips=1;
+let timer=0, tHandle=null, voices=[];
+const HOF_KEY='gtk_listen_answer_hof_v2';
+
+/* =========================
+   DOM
+   ========================= */
+const categorySel=document.getElementById('category');
+const voiceSelect=document.getElementById('voiceSelect');
+const rateSel=document.getElementById('rate');
+
+const startBtn=document.getElementById('startBtn');
+const repeatBtn=document.getElementById('repeatBtn');
+const skipBtn=document.getElementById('skipBtn');
+const submitBtn=document.getElementById('submitBtn');
+
+const qProgEl=document.getElementById('qProg');
+const scoreEl=document.getElementById('score');
+const skipsEl=document.getElementById('skipsLeft');
+const activeCatEl=document.getElementById('activeCat');
+const hintEl=document.getElementById('hint');
+const timerVal=document.getElementById('timerVal');
+
+const qTextEl=document.getElementById('qText');
+const optionsEl=document.getElementById('options');
+const feedbackEl=document.getElementById('feedback');
+
+const studentNameEl=document.getElementById('studentName');
+const studentClassEl=document.getElementById('studentClass');
+const studentSectionEl=document.getElementById('studentSection');
+const studentSchoolEl=document.getElementById('studentSchool');
+
+const certLine=document.getElementById('certLine');
+const certDate=document.getElementById('certDate');
+const downloadCert=document.getElementById('downloadCert');
+const hofList=document.getElementById('hofList');
+
+/* =========================
+   Voices
+   ========================= */
+function populateVoices(){
+  voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+  voiceSelect.innerHTML='';
+  const def=document.createElement('option');
+  def.value='';
+  def.textContent = voices.length ? 'Auto (browser default)' : 'No voices available';
+  voiceSelect.appendChild(def);
+  voices.forEach((v,i)=>{
+    const opt=document.createElement('option');
+    opt.value=i; opt.textContent=`${v.name} (${v.lang})`;
+    voiceSelect.appendChild(opt);
+  });
+}
+populateVoices();
+if(typeof speechSynthesis!=='undefined'){ speechSynthesis.onvoiceschanged=populateVoices; }
+
+/* =========================
+   Helpers
+   ========================= */
+function sampleN(arr,n){ const c=arr.slice(); for(let i=c.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [c[i],c[j]]=[c[j],c[i]]; } return c.slice(0,n); }
+function shuffledChoices(item){
+  const map=item.choices.map((c,i)=>({c,i}));
+  for(let k=map.length-1;k>0;k--){ const j=Math.floor(Math.random()*(k+1)); [map[k],map[j]]=[map[j],map[k]]; }
+  return map;
+}
+function speakText(text){
+  if(!text) return;
+  if(!window.speechSynthesis){ hintEl.textContent='Speech not supported on this device.'; return; }
+  window.speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text);
+  u.rate=parseFloat(rateSel.value||'1');
+  const sel=voiceSelect.value;
+  if(sel!=='' && voices[sel]) u.voice=voices[sel];
+  window.speechSynthesis.speak(u);
+}
+function enablePlayControls(b){
+  repeatBtn.disabled=!b;
+  skipBtn.disabled=!b || (skips<=0);
+  submitBtn.disabled=!b;
+}
+function updateKPI(){
+  qProgEl.textContent=`${Math.min(idx+1,5)}/5`;
+  scoreEl.textContent=`${score}`;
+  skipsEl.textContent=`${skips}`;
+  activeCatEl.textContent=categorySel.options[categorySel.selectedIndex].textContent;
+}
+function startTimerFor(cat){
+  clearInterval(tHandle);
+  timer=DUR[cat]||60;
+  timerVal.textContent=`${timer}s`;
+  tHandle=setInterval(()=>{
+    timer--; timerVal.textContent=`${timer}s`;
+    if(timer<=0){
+      clearInterval(tHandle);
+      feedbackEl.className='msg no';
+      feedbackEl.textContent='⏰ Time\'s up.';
+      if(idx<4){ idx++; loadQuestion(); } else { endRound(); }
+    }
+  },1000);
+}
+function stopTimer(){ clearInterval(tHandle); tHandle=null; timerVal.textContent='—'; }
+function renderQuestion(){
+  const item=items[idx];
+  qTextEl.textContent=item.question;
+  optionsEl.innerHTML='';
+  const mixed=shuffledChoices(item);
+  mixed.forEach(({c,i})=>{
+    const id=`opt_${idx}_${i}_${Math.random().toString(36).slice(2,7)}`;
+    const lab=document.createElement('label');
+    lab.className='opt';
+    lab.setAttribute('for',id);
+    lab.innerHTML=`<input type="radio" id="${id}" name="opt" value="${i}" /> <span>${c}</span>`;
+    lab.addEventListener('click',()=>{ lab.querySelector('input').checked=true; });
+    optionsEl.appendChild(lab);
+  });
+}
+function getSelected(){ const r=document.querySelector('input[name="opt"]:checked'); return r?parseInt(r.value):null; }
+
+/* =========================
+   HOF
+   ========================= */
+function saveHOF(entry){ const list=loadHOF(); list.push(entry); localStorage.setItem(HOF_KEY,JSON.stringify(list)); }
+function loadHOF(){ try{ return JSON.parse(localStorage.getItem(HOF_KEY)||'[]'); }catch(_){ return []; } }
+function renderHOF(){
+  const cat=categorySel.value;
+  const list=loadHOF().filter(x=>x.category===cat).sort((a,b)=> b.percent-a.percent || a.date-b.date).slice(0,10);
+  if(list.length===0){ hofList.innerHTML='<p class="muted">No entries yet. Finish a round to appear here.</p>'; return; }
+  hofList.innerHTML='';
+  list.forEach((it,rank)=>{
+    const row=document.createElement('div'); row.className='hof-item';
+    const d=new Date(it.date); const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); const yyyy=d.getFullYear();
+    const left=document.createElement('div');
+    const details = [it.cls?`Class ${it.cls}`:'', it.sec?`Sec ${it.sec}`:'', it.school||''].filter(Boolean).join(', ');
+    left.innerHTML=`<strong>${rank+1}.</strong> ${it.name} — ${it.percent}% <span class="muted">(${dd}/${mm}/${yyyy})</span> ${details?`<span class="muted">— ${details}</span>`:''}`;
+    const right=document.createElement('div'); right.textContent=catLabel(it.category);
+    row.appendChild(left); row.appendChild(right); hofList.appendChild(row);
+  });
+}
+function catLabel(v){ return ({announcements:'Announcements',instructions:'Instructions',stories:'Stories',poems:'Poems',paragraphs:'Paragraph'})[v]||v; }
+
+/* =========================
+   Flow
+   ========================= */
+categorySel.addEventListener('change', ()=>{ selectedCat=categorySel.value; renderHOF(); });
+
+function ensureBasics(){
+  if(!(studentNameEl.value||'').trim()){ alert('Please enter your Name.'); return false; }
+  // class/section/school are optional for start; included in certificate if filled
+  return true;
+}
+function loadQuestion(){
+  updateKPI();
+  renderQuestion();
+  hintEl.textContent='Playing audio...';
+  enablePlayControls(true);
+  speakText(items[idx].audio);
+  startTimerFor(selectedCat);
+}
+
+startBtn.addEventListener('click', ()=>{
+  if(!ensureBasics()) return;
+  selectedCat=categorySel.value;
+  items=sampleN(BANK[selectedCat],5);
+  idx=0; score=0; skips=1; feedbackEl.textContent='';
+  loadQuestion();
+});
+
+repeatBtn.addEventListener('click', ()=>{ if(items.length>0){ speakText(items[idx].audio); } });
+
+skipBtn.addEventListener('click', ()=>{
+  if(skips<=0) return;
+  skips--; updateKPI();
+  if(idx<4){ idx++; loadQuestion(); } else { endRound(); }
+  if(skips<=0) skipBtn.disabled=true;
+});
+
+submitBtn.addEventListener('click', ()=>{
+  const sel=getSelected();
+  if(sel===null){ feedbackEl.className='msg no'; feedbackEl.textContent='Please select an option.'; return; }
+  stopTimer();
+  const correct=items[idx].answer;
+  if(sel===correct){ score++; feedbackEl.className='msg ok'; feedbackEl.textContent='🎉 Correct!'; }
+  else { feedbackEl.className='msg no'; feedbackEl.textContent='❌ Incorrect.'; }
+  if(idx<4){ idx++; setTimeout(()=>loadQuestion(),400); } else { endRound(); }
+});
+
+function endRound(){
+  stopTimer(); enablePlayControls(false);
+  const percent=Math.round((score/5)*100);
+  const nm=(studentNameEl.value||'—').trim();
+  const cls=(studentClassEl.value||'—').trim();
+  const sec=(studentSectionEl.value||'—').trim();
+  const sch=(studentSchoolEl.value||'—').trim();
+  // certificate preview
+  certLine.innerHTML=`This is to certify that <strong>${nm}</strong> of Class <strong>${cls}</strong>, Section <strong>${sec}</strong>, School <strong>${sch}</strong>, has successfully completed the Listening Comprehension with a score of <strong>${percent}%</strong>.`;
+  const d=new Date(); const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); const yyyy=d.getFullYear();
+  certDate.textContent=`Date: ${dd}/${mm}/${yyyy}`;
+  downloadCert.disabled=false;
+
+  // HOF
+  saveHOF({ name:nm||'Anonymous', cls, sec, school:sch, category:selectedCat, percent, date:Date.now() });
+  renderHOF();
+}
+
+/* =========================
+   Certificate (jsPDF) - dd/mm/yyyy, issuer: English Department
+   ========================= */
+downloadCert.addEventListener('click', ()=>{
+  const percent=Math.round((score/5)*100);
+  const { jsPDF }=window.jspdf;
+  const doc=new jsPDF({ orientation:'landscape' });
+  const W=doc.internal.pageSize.getWidth();
+
+  // Title panel
+  doc.setDrawColor(0,128,255); doc.setLineWidth(8); doc.rect(10,10,W-20,190);
+  doc.setFillColor(240,248,255); doc.rect(16,16,W-32,178,'F');
+
+  // Title
+  doc.setFont('helvetica','bold'); doc.setFontSize(30); doc.setTextColor(20,60,120);
+  doc.text('Certificate of Achievement', W/2, 48, {align:'center'});
+
+  // Body with details
+  const nm=(studentNameEl.value||'—').trim();
+  const cls=(studentClassEl.value||'—').trim();
+  const sec=(studentSectionEl.value||'—').trim();
+  const sch=(studentSchoolEl.value||'—').trim();
+  doc.setFont('helvetica','normal'); doc.setFontSize(16); doc.setTextColor(0,0,0);
+  doc.text(`This is to certify that ${nm} of Class ${cls}, Section ${sec}, School ${sch},`, 40, 100);
+  doc.text(`has successfully completed the Listening Comprehension with a score of ${percent}%.`, 40, 118);
+
+  // Footer
+  const d=new Date(); const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); const yyyy=d.getFullYear();
+  doc.setFontSize(12); doc.text(`Date: ${dd}/${mm}/${yyyy}`, W-120, 170);
+  doc.setFont('helvetica','bold'); doc.setTextColor(0,128,255);
+  doc.text('English Department', W-120, 186);
+
+  const safe=(nm||'Student').replace(/[^a-z0-9]+/gi,'_');
+  doc.save(`${safe}_Listening_Comprehension_Certificate.pdf`);
+});
+
+/* =========================
+   Init
+   ========================= */
+(function init(){
+  populateVoices();
+  renderHOF();
+  updateKPI();
+})();
+</script>
+</body>
+</html>
