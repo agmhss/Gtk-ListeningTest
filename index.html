@@ -58,7 +58,7 @@
       <div><label><strong>Name</strong></label><input id="studentName" type="text" placeholder="Your name" autocomplete="name"></div>
       <div><label><strong>Class</strong></label><input id="studentClass" type="text" placeholder="e.g., 6 / 7A"></div>
       <div><label><strong>Section</strong></label><input id="studentSection" type="text" placeholder="A / B / C"></div>
-      <div><label><strong>School</strong></label><input id="studentSchool" type="text" placeholder="Your school"></div>
+      <div><label><strong>School</strong></label><input id="studentSchool" type="text" placeholder="Your school" maxlength="40"></div>
     </div>
 
     <div class="kpi" aria-live="polite" style="margin-top:12px">
@@ -119,7 +119,14 @@
   <section class="card">
     <h2>3) Certificate</h2>
     <div class="cert-preview" id="certPreview">
-      <p id="certLine">This is to certify that <strong>—</strong> of Class <strong>—</strong>, Section <strong>—</strong>, School <strong>—</strong>, has successfully completed the Listening Comprehension with a score of <strong>0%</strong>.</p>
+      <!-- SCHOOL ON TOP (centered) -->
+      <h3 id="certSchoolTop" style="margin:0 0 6px 0;text-align:center;font-weight:600;">—</h3>
+
+      <p id="certLine">
+        This is to certify that <strong>—</strong> of Class <strong>—</strong>, Section <strong>—</strong>,
+        has successfully completed the Listening Comprehension with a score of <strong>0%</strong> in
+        <strong>—</strong> category.
+      </p>
       <p class="muted" id="certDate">Date: —/—/—</p>
     </div>
     <div class="stack" style="margin-top:8px">
@@ -138,7 +145,7 @@
 
 <script>
 /* =========================
-   Expanded Question bank (more items for variety)
+   Expanded Question bank (same as before)
    ========================= */
 const BANK = {
   announcements: [
@@ -152,7 +159,6 @@ const BANK = {
       question:"What time will the bus now depart?", choices:["8:30","8:40","8:50","9:00"], answer:2 },
     { audio:"Announcement: The science fair registration closes today at 4 PM. Please submit your entries at the library help desk before the deadline.",
       question:"Where should entries be submitted?", choices:["Office","Auditorium","Library help desk","Lab 2"], answer:2 },
-    /* extra variety */
     { audio:"Your attention please. Platform change for the Intercity Express to Coimbatore: the train will now depart from Platform Five. Kindly make your way to Platform Five.",
       question:"What changed for the Coimbatore Intercity?", choices:["Departure time","Coach order","Platform","Route"], answer:2 },
     { audio:"Final call for passengers on Train 121 bound for Bengaluru. Doors will close in two minutes. Please board immediately through Coach B.",
@@ -175,7 +181,6 @@ const BANK = {
       question:"Where should students click on the portal?", choices:["Home","Events","Profile","Messages"], answer:1 },
     { audio:"When watering plants, check the soil first. If it feels dry, water gently until it begins to drain from the bottom. Avoid overwatering.",
       question:"When should you water the plant?", choices:["Only at night","When soil feels dry","Every hour","Every day at noon"], answer:1 },
-    /* extra variety */
     { audio:"To back up your notes, open the cloud app, select the notebook, and tap 'Sync Now'. Ensure you are connected to Wi-Fi before syncing.",
       question:"What must be ensured before syncing?", choices:["Mobile data is off","Wi-Fi is connected","Bluetooth is on","Airplane mode is on"], answer:1 },
     { audio:"While cooking pasta, boil water with a pinch of salt, add pasta, and stir occasionally. Drain when it is soft but slightly firm.",
@@ -198,7 +203,6 @@ const BANK = {
       question:"What helped the class find the exit?", choices:["A map","The tallest tree","A compass","A whistle"], answer:1 },
     { audio:"Anu wanted to surprise her brother with a handmade card. She collected leaves of different shapes, pressed them, and created a beautiful collage.",
       question:"What did Anu make?", choices:["A painting","A collage card","A bookmark","A poster"], answer:1 },
-    /* extra variety */
     { audio:"Karan forgot his lunchbox but his friend shared sandwiches. In return, Karan helped with homework later, and both were happy.",
       question:"How did Karan thank his friend?", choices:["Bought lunch","Shared a toy","Helped with homework","Wrote a note"], answer:2 },
     { audio:"Priya planted a tiny seed in a pot. She watered it daily and kept it in sunlight. A week later, a small sprout appeared.",
@@ -221,7 +225,6 @@ const BANK = {
       question:"What begins the pencil's journey?", choices:["A circle","A line","A dot","A curve"], answer:1 },
     { audio:"Stars sprinkle silver dust across the velvet night. Dreams tiptoe softly until the dawn's soft light.",
       question:"What do stars sprinkle?", choices:["Golden rain","Silver dust","Snow","Clouds"], answer:1 },
-    /* extra variety */
     { audio:"Leaves dance in a secret breeze, whispering tales to the trees. Shadows stretch and then they fold, as dusk paints edges gold.",
       question:"What dances in the breeze?", choices:["Raindrops","Leaves","Birds","Clouds"], answer:1 },
     { audio:"Crickets stitch the night with sound, tiny choirs all around. Moonlight draws a silver seam, mending edges of a dream.",
@@ -244,7 +247,6 @@ const BANK = {
       question:"What safety gear is recommended?", choices:["Gloves","Helmet","Knee pads","Boots"], answer:1 },
     { audio:"Keeping a tidy desk makes it easier to find things. Put books back after use and throw away scrap papers. Spend a few minutes each day to organize.",
       question:"Why keep a tidy desk?", choices:["To decorate it","To find things easily","To impress friends","To avoid homework"], answer:1 },
-    /* extra variety */
     { audio:"Healthy sleep supports memory and growth. Go to bed at the same time each night and avoid screens an hour before sleeping.",
       question:"What should be avoided before sleeping?", choices:["Books","Screens","Water","Homework"], answer:1 },
     { audio:"Planting native trees helps local birds and insects. Water new saplings regularly and protect them with small fences.",
@@ -259,7 +261,7 @@ const BANK = {
 };
 
 /* =========================
-   Settings
+   Timings
    ========================= */
 const DUR = { announcements:30, instructions:60, stories:60, poems:60, paragraphs:60 };
 
@@ -298,6 +300,7 @@ const studentClassEl=document.getElementById('studentClass');
 const studentSectionEl=document.getElementById('studentSection');
 const studentSchoolEl=document.getElementById('studentSchool');
 
+const certSchoolTop=document.getElementById('certSchoolTop');
 const certLine=document.getElementById('certLine');
 const certDate=document.getElementById('certDate');
 const downloadCert=document.getElementById('downloadCert');
@@ -385,7 +388,7 @@ function renderQuestion(){
 function getSelected(){ const r=document.querySelector('input[name="opt"]:checked'); return r?parseInt(r.value):null; }
 
 /* =========================
-   HOF
+   HOF (unchanged)
    ========================= */
 function saveHOF(entry){ const list=loadHOF(); list.push(entry); localStorage.setItem(HOF_KEY,JSON.stringify(list)); }
 function loadHOF(){ try{ return JSON.parse(localStorage.getItem(HOF_KEY)||'[]'); }catch(_){ return []; } }
@@ -413,7 +416,6 @@ categorySel.addEventListener('change', ()=>{ selectedCat=categorySel.value; rend
 
 function ensureBasics(){
   if(!(studentNameEl.value||'').trim()){ alert('Please enter your Name.'); return false; }
-  // class/section/school are optional for start; included in certificate if filled
   return true;
 }
 function loadQuestion(){
@@ -458,14 +460,22 @@ function endRound(){
   const nm=(studentNameEl.value||'—').trim();
   const cls=(studentClassEl.value||'—').trim();
   const sec=(studentSectionEl.value||'—').trim();
-  const sch=(studentSchoolEl.value||'—').trim();
-  // certificate preview
-  certLine.innerHTML=`This is to certify that <strong>${nm}</strong> of Class <strong>${cls}</strong>, Section <strong>${sec}</strong>, School <strong>${sch}</strong>, has successfully completed the Listening Comprehension with a score of <strong>${percent}%</strong>.`;
+  const schRaw=(studentSchoolEl.value||'—').trim();
+  const sch=schRaw.slice(0,40);
+  const catText=catLabel(selectedCat);
+
+  // Certificate preview: SCHOOL on top (centered), Category after score
+  certSchoolTop.textContent = sch || '—';
+  certLine.innerHTML =
+    `This is to certify that <strong>${nm}</strong> of Class <strong>${cls}</strong>, ` +
+    `Section <strong>${sec}</strong>, has successfully completed the Listening ` +
+    `Comprehension with a score of <strong>${percent}%</strong> in <strong>${catText}</strong> category.`;
+
   const d=new Date(); const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); const yyyy=d.getFullYear();
   certDate.textContent=`Date: ${dd}/${mm}/${yyyy}`;
   downloadCert.disabled=false;
 
-  // HOF
+  // Save to HoF (unchanged)
   saveHOF({ name:nm||'Anonymous', cls, sec, school:sch, category:selectedCat, percent, date:Date.now() });
   renderHOF();
 }
@@ -479,26 +489,36 @@ downloadCert.addEventListener('click', ()=>{
   const doc=new jsPDF({ orientation:'landscape' });
   const W=doc.internal.pageSize.getWidth();
 
-  // Title panel
-  doc.setDrawColor(0,128,255); doc.setLineWidth(8); doc.rect(10,10,W-20,190);
+  // Frame
+  doc.setDrawColor(0,128,255); doc.setLineWidth(8);
+  doc.rect(10,10,W-20,190);
   doc.setFillColor(240,248,255); doc.rect(16,16,W-32,178,'F');
 
   // Title
   doc.setFont('helvetica','bold'); doc.setFontSize(30); doc.setTextColor(20,60,120);
   doc.text('Certificate of Achievement', W/2, 48, {align:'center'});
 
-  // Body with details
+  // SCHOOL ON TOP (center) — max 40 chars
+  const schRaw=(studentSchoolEl.value||'—').trim();
+  const sch=schRaw.slice(0,40);
+  doc.setFont('helvetica','bold'); doc.setFontSize(18); doc.setTextColor(0,0,0);
+  doc.text(sch, W/2, 66, {align:'center'});
+
+  // Body: name / class / section + score + CATEGORY after score
   const nm=(studentNameEl.value||'—').trim();
   const cls=(studentClassEl.value||'—').trim();
   const sec=(studentSectionEl.value||'—').trim();
-  const sch=(studentSchoolEl.value||'—').trim();
-  doc.setFont('helvetica','normal'); doc.setFontSize(16); doc.setTextColor(0,0,0);
-  doc.text(`This is to certify that ${nm} of Class ${cls}, Section ${sec}, School ${sch},`, 40, 100);
-  doc.text(`has successfully completed the Listening Comprehension with a score of ${percent}%.`, 40, 118);
+  const catText=catLabel(selectedCat);
 
-  // Footer
+  doc.setFont('helvetica','normal'); doc.setFontSize(16); doc.setTextColor(0,0,0);
+  doc.text(`This is to certify that ${nm} of Class ${cls}, Section ${sec},`, 40, 100);
+  doc.text(`has successfully completed Listening Comprehension with a score of ${percent}%.`, 40, 118);
+  doc.text(`Category: ${catText}`, 40, 136);
+
+  // Footer: date + issuer
   const d=new Date(); const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); const yyyy=d.getFullYear();
-  doc.setFontSize(12); doc.text(`Date: ${dd}/${mm}/${yyyy}`, W-120, 170);
+  doc.setFontSize(12); doc.setTextColor(0,0,0);
+  doc.text(`Date: ${dd}/${mm}/${yyyy}`, W-120, 170);
   doc.setFont('helvetica','bold'); doc.setTextColor(0,128,255);
   doc.text('English Department', W-120, 186);
 
@@ -512,7 +532,12 @@ downloadCert.addEventListener('click', ()=>{
 (function init(){
   populateVoices();
   renderHOF();
-  updateKPI();
+  // initial KPI render
+  document.getElementById('qProg').textContent='0/5';
+  document.getElementById('score').textContent='0';
+  document.getElementById('skipsLeft').textContent='1';
+  document.getElementById('activeCat').textContent=categorySel.options[categorySel.selectedIndex].textContent;
+  document.getElementById('timerVal').textContent='—';
 })();
 </script>
 </body>
